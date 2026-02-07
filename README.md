@@ -259,10 +259,10 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 👤 Author
 
-**Your Name**
+**Abdullah Matin**
 
-- GitHub: [@yourusername](https://github.com/yourusername)
-- LinkedIn: [Your Name](https://linkedin.com/in/yourprofile)
+- GitHub: [@Martian-X1X](https://github.com/Martian-X1X)
+- LinkedIn: [Abdullah Matin](https://www.linkedin.com/in/abdullahmatin6920/)
 
 ---
 
