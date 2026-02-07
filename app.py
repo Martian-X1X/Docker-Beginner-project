@@ -6,33 +6,59 @@ import os
 import logging
 import threading
 
-# ---------- LOGGING SETUP (MUST BE FIRST) ----------
+# ---------- LOGGING SETUP ----------
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s | %(levelname)s | %(message)s"
 )
-
 logger = logging.getLogger(__name__)
-# --------------------------------------------------
+# ----------------------------------
 
 app = Flask(__name__)
-
 hostname = socket.gethostname()
 
 REDIS_HOST = os.getenv("REDIS_HOST", "redis")
 REDIS_PORT = int(os.getenv("REDIS_PORT", 6379))
 MESSAGE = os.getenv("MESSAGE", "HELLO Martian from Redis + Flask!!!")
 
-r = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, decode_responses=True)
+# ✅ Create Redis client ONCE, with timeouts
+r = redis.Redis(
+    host=REDIS_HOST,
+    port=REDIS_PORT,
+    decode_responses=True,
+    socket_connect_timeout=1,
+    socket_timeout=1,
+    retry_on_timeout=False
+)
 
-r.set("message", MESSAGE)
+# ---------- SAFE REDIS HELPERS ----------
+def safe_redis_get(key):
+    try:
+        return r.get(key)
+    except Exception as e:
+        logger.error(f"Redis GET failed: {e}")
+        return None
+
+def safe_redis_set(key, value):
+    try:
+        r.set(key, value)
+        return True
+    except Exception as e:
+        logger.warning(f"Redis SET failed: {e}")
+        return False
+# --------------------------------------
 
 @app.route("/message", methods=["GET"])
 def get_message():
-    value = r.get("message")
+    value = safe_redis_get("message")
+
+    if value is None:
+        return jsonify({
+            "error": "Service temporarily unavailable",
+            "served_by": hostname
+        }), 503
 
     logger.info(f"/message served by {hostname}")
-
     return jsonify({
         "message": value,
         "served_by": hostname
@@ -40,8 +66,10 @@ def get_message():
 
 def update_redis():
     while True:
-        r.set("message", f"{MESSAGE} ({int(time.time())})")
-        logger.info("Redis message updated")
+        safe_redis_set(
+            "message",
+            f"{MESSAGE} ({int(time.time())})"
+        )
         time.sleep(10)
 
 if __name__ == "__main__":
